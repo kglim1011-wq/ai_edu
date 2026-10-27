@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#227960">
-  <meta name="description" content="문서, 일정, 할 일을 한곳에서. 나의 하루를 정리하는 ONDO AI 오피스.">
-  <title>ONDO — 나의 AI 오피스</title>
+  <meta name="description" content="문서, 일정, 할 일을 한곳에서. 나의 하루를 정리하는 ONDO 오피스.">
+  <title>ONDO — 나의 업무 오피스</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
@@ -22,9 +22,9 @@
       <a href="#documents" data-page="documents"><i data-icon="file"></i>문서</a>
     </nav>
     <div class="sidebar-divider"></div>
-    <p class="nav-label">MY ASSISTANT</p>
-    <button class="assistant-nav" data-action="assistant"><span class="sparkle-small">✦</span>AI 어시스턴트<span class="beta">BETA</span></button>
-    <div class="sidebar-bottom"><div class="local-note"><span class="status-dot"></span><strong id="connection-badge">나만의 작은 오피스</strong><p id="storage-label">데이터는 이 브라우저에 저장돼요.</p><button data-action="export">데이터 백업 <span>↗</span></button></div><div class="profile"><span class="avatar">나</span><div><strong>나의 계정</strong><small id="profile-subtitle">개인 워크스페이스</small></div><button class="icon-button" data-action="settings" aria-label="워크스페이스 정보"><i data-icon="settings"></i></button></div></div>
+    <p class="nav-label">QUICK TOOLS</p>
+    <button class="assistant-nav" data-action="briefing"><i data-icon="clock"></i>오늘의 업무 브리핑</button><button class="assistant-nav" data-action="import"><i data-icon="file"></i>백업 가져오기</button>
+    <div class="sidebar-bottom"><div class="local-note"><span class="status-dot"></span><strong>나만의 작은 오피스</strong><p>데이터는 이 브라우저에 저장돼요.</p><button data-action="export">데이터 백업 <span>↗</span></button></div><div class="profile"><span class="avatar">나</span><div><strong>나의 계정</strong><small>개인 워크스페이스</small></div><button class="icon-button" data-action="settings" aria-label="워크스페이스 정보"><i data-icon="settings"></i></button></div></div>
   </aside>
   <div class="app-shell">
     <header class="topbar"><div class="breadcrumb">워크스페이스 <span>/</span> <strong id="breadcrumb-title">대시보드</strong></div><div class="topbar-actions"><label class="search-box"><i data-icon="search"></i><input id="global-search" type="search" placeholder="문서, 할 일 검색" aria-label="문서, 할 일 검색"><kbd>/</kbd></label><button class="icon-button" data-action="notifications" aria-label="다가오는 일정"><i data-icon="bell"></i><span id="notification-dot"></span></button><span class="avatar top-avatar">나</span></div></header>
@@ -32,7 +32,6 @@
     <footer>조금 더 가볍게, 조금 더 나답게. <span>Made for your flow · ONDO</span></footer>
   </div>
   <dialog id="editor" aria-labelledby="editor-title"></dialog>
-  <dialog id="assistant" aria-labelledby="assistant-title"><div class="dialog-header"><div><span class="eyebrow">YOUR WORK PARTNER · CODEX</span><h2 id="assistant-title">✦ AI 어시스턴트</h2></div><button class="icon-button" data-close="assistant" aria-label="닫기">×</button></div><p class="assistant-info">PC 버전에서는 기존 ChatGPT 로그인으로 Codex 요금제 사용량을 사용해요. AI 요청 시 할 일·일정·문서 제목과 최근 대화가 OpenAI로 전달돼요. 문서 본문과 API 키는 보내지 않아요. 인터넷 연결과 요금제 잔여 사용량이 필요해요.</p><div id="chat-log" class="chat-log" aria-live="polite"><div class="chat-message assistant-message">안녕하세요! 오늘의 업무 우선순위를 함께 정리해 볼까요?</div></div><div class="chat-presets"><button data-prompt="오늘 할 일의 우선순위를 정하고, 일정 사이에 배치해 줘.">오늘의 우선순위</button><button data-prompt="현재 업무를 바탕으로 간단한 일일 업무 보고서 초안을 작성해 줘.">업무 보고서 초안</button><button id="recheck-ai">연결 확인</button></div><form id="chat-form" class="chat-form"><input id="chat-input" required maxlength="2000" placeholder="어떤 업무를 도와드릴까요?" aria-label="AI에게 요청"><button class="button primary" type="submit" aria-label="요청 보내기">↑</button></form><small id="ai-status">AI 연결 상태를 확인하고 있어요.</small></dialog>
   <input id="backup-file" type="file" accept="application/json,.json" hidden aria-label="백업 파일 가져오기">
   <div id="toast" role="status" aria-live="polite"></div>
 </body>

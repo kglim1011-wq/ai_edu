@@ -1,8 +1,6 @@
 .git
 .env*
 .local
-AI오피스 실행.cmd
-AI오피스 종료.cmd
 tests
 scripts/dev.mjs
 AGENTS.md

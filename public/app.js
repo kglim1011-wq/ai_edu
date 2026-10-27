@@ -1,4 +1,5 @@
 import { dateKey, prettyDate, taskMatches, createInitialData, summarize } from './domain.js';
+import { validWorkspace } from './workspace-validation.js';
 const $ = selector => document.querySelector(selector);
 const main = $('#main');
 const KEY = 'ondo-office-v1';
@@ -22,40 +23,20 @@ const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name] 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 document.querySelectorAll('[data-icon]').forEach(node => { node.innerHTML = icon(node.dataset.icon); });
 let data, storageIssue = '', firstVisit = false;
-let isLocal=false, localToken='', persistenceQueue=Promise.resolve(), persistenceError=false;
-const chatHistory=[];
-function persistenceLabel(text) { const el=$('#storage-label'); if(el) el.textContent=text; }
 try {
   const saved = localStorage.getItem(KEY);
   firstVisit = !saved;
   data = saved ? JSON.parse(saved) : createInitialData();
-  if (data.version !== 1 || !Array.isArray(data.tasks) || !Array.isArray(data.events) || !Array.isArray(data.docs)) throw Error('Invalid data');
+  if (!validWorkspace(data)) throw Error('Invalid data');
 } catch {
   // Keep a damaged record intact so it can be recovered rather than silently replacing it.
   data = createInitialData();
   storageIssue = '브라우저 저장소를 읽을 수 없어 임시로 실행 중입니다. 데이터 백업 후 저장소 설정을 확인해 주세요.';
 }
 let taskFilter = 'today', fullFilter = 'open', calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1), search = '';
-let aiReady = false, aiBusy = false;
 let toastTimer;
 function toast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('visible'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('visible'), 3500); }
 function save() {
-  if (isLocal) {
-    if(storageIssue) { toast('PC 데이터 오류가 있어 덮어쓰지 않았어요. 백업을 확인해 주세요.'); return; }
-    const snapshot=JSON.stringify(data);
-    persistenceLabel('PC에 저장 중…');
-    persistenceQueue=persistenceQueue.then(async()=> {
-      try {
-        const response=await fetch('/api/workspace',{method:'PUT',headers:{'Content-Type':'application/json','X-ONDO-Token':localToken},body:snapshot});
-        if(!response.ok) throw Error('저장 실패');
-        persistenceError=false; persistenceLabel('이 PC에 저장됨');
-      } catch {
-        persistenceError=true; persistenceLabel('PC 저장 실패 · 다시 저장해 주세요');
-        toast('PC에 저장하지 못했어요. 백업을 내려받고 다시 시도해 주세요.');
-      }
-    });
-    return;
-  }
   if (storageIssue) { toast('임시 변경입니다. 데이터 백업으로 보관해 주세요.'); return; }
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { storageIssue = '저장 공간이 부족하거나 접근이 차단돼 변경 사항을 저장하지 못했어요. 데이터 백업을 이용해 주세요.'; toast(storageIssue); }
 }
@@ -86,7 +67,7 @@ function dashboard() {
   ];
   const tasks = data.tasks.filter(t => taskMatches(t, taskFilter)).sort((a, b) => a.date.localeCompare(b.date));
   return title('나의 하루, 한눈에', '복잡한 업무는 가볍게, 중요한 일에 더 집중하세요.', `<button class="date-button" data-action="today">${icon('calendar')}${prettyDate(dateKey(), { year: 'numeric', weekday: 'short' })}</button>`) +
-  `<section class="hero"><div class="hero-content"><span class="eyebrow">A LITTLE CLARITY, A BETTER DAY</span><h2>${greeting} ☀<br><strong>오늘도 나만의 속도로, 시작해 볼까요?</strong></h2><p>할 일 ${s.today.length}개와 일정 ${s.events.length}개가 기다리고 있어요.<br>가장 중요한 일부터 하나씩 정리해 보세요.</p><div class="hero-buttons"><button class="button primary" data-action="briefing">✦ 오늘의 업무 브리핑</button><button class="text-button" data-action="assistant">AI에게 물어보기 ${icon('arrow')}</button></div></div><div class="hero-art" aria-hidden="true"><div class="art-paper"></div><div class="art-orb">✦</div><div class="art-leaf"></div></div></section>
+  `<section class="hero"><div class="hero-content"><span class="eyebrow">A LITTLE CLARITY, A BETTER DAY</span><h2>${greeting} ☀<br><strong>오늘도 나만의 속도로, 시작해 볼까요?</strong></h2><p>할 일 ${s.today.length}개와 일정 ${s.events.length}개가 기다리고 있어요.<br>가장 중요한 일부터 하나씩 정리해 보세요.</p><div class="hero-buttons"><button class="button primary" data-action="briefing">✦ 오늘의 업무 브리핑</button><a class="text-button" href="#calendar">일정 살펴보기 ${icon('arrow')}</a></div></div><div class="hero-art" aria-hidden="true"><div class="art-paper"></div><div class="art-orb">✦</div><div class="art-leaf"></div></div></section>
   <section class="stats" aria-label="업무 현황">${stats.map(([label, value, unit, detail, glyph]) => `<div class="stat"><div class="stat-top">${label}<span class="stat-icon">${icon(glyph)}</span></div><div class="stat-number"><strong>${value}</strong><span>${unit}</span></div><p class="stat-bottom"><span class="mini-dot"></span>${detail}</p></div>`).join('')}</section>
   <div class="dashboard-grid"><div><section class="panel"><div class="panel-header"><h2>나의 할 일 <span class="count">${s.today.length}</span></h2><a class="text-button" href="#tasks">전체 보기 ${icon('arrow')}</a></div><div class="tabs" role="group" aria-label="할 일 필터">${[['today', '오늘'], ['open', '진행 중'], ['done', '완료']].map(([key, label]) => `<button data-filter="${key}" class="${taskFilter === key ? 'selected' : ''}">${label}</button>`).join('')}</div>${tasks.slice(0, 5).map(taskRow).join('') || empty('여유로운 하루네요.<br>새로운 할 일을 추가해 보세요.')}<div class="panel-bottom"><button data-new="task">${icon('plus')}새로운 할 일 추가</button></div></section><section class="panel docs-panel"><div class="panel-header"><h2>최근 문서</h2><a class="text-button" href="#documents">전체 보기 ${icon('arrow')}</a></div><div class="doc-grid">${[...data.docs].sort((a,b) => b.updated.localeCompare(a.updated)).slice(0,3).map(docCard).join('') || empty('첫 문서를 작성해 보세요.', 'file')}</div></section></div>
   <div class="dashboard-right"><section class="panel"><div class="panel-header"><h2>오늘의 일정 <span class="count">${s.events.length}</span></h2><a class="text-button" href="#calendar" aria-label="전체 일정 보기">${icon('arrow')}</a></div><p class="agenda-label">${prettyDate(dateKey(), { weekday: 'long' })}</p><div class="timeline">${s.events.map(eventRow).join('') || empty('오늘은 등록된 일정이 없어요.', 'calendar')}</div><div class="panel-bottom"><button data-new="event">${icon('plus')}일정 추가하기</button></div></section><section class="focus-card"><span class="eyebrow">A MOMENT FOR YOU</span><h3>잘하고 있어요. 잠깐 쉬어 갈까요?</h3><p>작은 휴식이 새로운 집중을 만들어요.<br>물 한 잔과 함께 생각을 정리해 보세요.</p><button data-new="doc">떠오른 생각 기록하기 ↗</button><span class="focus-symbol" aria-hidden="true">✳</span></section></div></div>`;
@@ -129,7 +110,7 @@ function edit(type, id, chosenDate) {
   $('#editor').innerHTML = editorHeader(`${item ? '수정' : '새로 만들기'} · ${{task:'할 일', event:'일정', doc:'문서'}[type]}`) + `<form id="item-form" data-type="${type}" data-id="${id || ''}">${fields}<div class="dialog-footer">${item ? '<button type="button" class="delete" data-action="delete-item">삭제</button>' : ''}<button type="button" class="button" data-close="editor">취소</button><button class="button primary" type="submit">저장하기</button></div></form>`;
   openDialog('editor');
 }
-document.addEventListener('submit', async event => {
+document.addEventListener('submit', event => {
   if (event.target.id !== 'item-form') return;
   event.preventDefault();
   const form = event.target, values = Object.fromEntries(new FormData(form)), type = form.dataset.type;
@@ -141,43 +122,41 @@ document.addEventListener('submit', async event => {
   if (type === 'task') entry.done = existing?.done || false;
   if (type === 'doc') entry.updated = new Date().toISOString();
   if (existing) Object.assign(existing,entry); else data[collection].push(entry);
-  save(); $('#editor').close(); render(); await persistenceQueue;
-  toast(storageIssue || persistenceError ? '저장을 완료하지 못했어요. 데이터 백업을 해 주세요.' : '저장했어요.');
+  save(); $('#editor').close(); render(); toast(storageIssue ? '임시로 반영했어요. 데이터 백업을 해 주세요.' : '저장했어요.');
 });
 document.addEventListener('input', event => { if (event.target.form?.id === 'item-form') event.target.setCustomValidity(''); });
 function briefing() {
   const s = summarize(data);
-  $('#editor').innerHTML = editorHeader('오늘의 업무 브리핑', 'DAILY BRIEFING') + `<p class="info-copy">${prettyDate(dateKey(),{weekday:'long'})} · 저장된 업무를 바탕으로 정리했어요.</p><div class="brief-list"><p>☑ 오늘까지 마무리할 업무는 <strong>${s.today.length}개</strong>예요.${s.overdue.length ? ` 이 중 기한이 지난 업무는 ${s.overdue.length}개예요.` : ''}</p><p>⚑ 우선순위가 높은 업무는 <strong>${s.high.length}개</strong>예요.${s.high[0] ? `<br>먼저 “${esc(s.high[0].title)}”부터 시작해 보세요.` : ' 여유 있게 오늘의 목표를 정해 보세요.'}</p><p>◷ 오늘 일정은 <strong>${s.events.length}개</strong>예요.${s.events.map(e => `<br>${esc(e.time)} · ${esc(e.title)}`).join('')}</p></div><div class="dialog-footer"><button class="button" data-close="editor">닫기</button><button class="button primary" data-action="assistant">✦ AI와 업무 계획하기</button></div>`;
+  $('#editor').innerHTML = editorHeader('오늘의 업무 브리핑', 'DAILY BRIEFING') + `<p class="info-copy">${prettyDate(dateKey(),{weekday:'long'})} · 저장된 업무를 바탕으로 정리했어요.</p><div class="brief-list"><p>☑ 오늘까지 마무리할 업무는 <strong>${s.today.length}개</strong>예요.${s.overdue.length ? ` 이 중 기한이 지난 업무는 ${s.overdue.length}개예요.` : ''}</p><p>⚑ 우선순위가 높은 업무는 <strong>${s.high.length}개</strong>예요.${s.high[0] ? `<br>먼저 “${esc(s.high[0].title)}”부터 시작해 보세요.` : ' 여유 있게 오늘의 목표를 정해 보세요.'}</p><p>◷ 오늘 일정은 <strong>${s.events.length}개</strong>예요.${s.events.map(e => `<br>${esc(e.time)} · ${esc(e.title)}`).join('')}</p></div><div class="dialog-footer"><button class="button" data-close="editor">닫기</button><button class="button primary" data-close="editor" data-go="tasks">할 일 관리하기</button></div>`;
   openDialog('editor');
 }
 const actions = {
-  assistant() { $('#editor').close(); openDialog('assistant'); },
   briefing,
   today() { calendarMonth = new Date(new Date().getFullYear(),new Date().getMonth(),1); if (location.hash === '#calendar') render(); else location.hash = 'calendar'; },
   notifications() {
     const events = data.events.filter(e => e.date >= dateKey()).sort((a,b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).slice(0,8);
     $('#editor').innerHTML = editorHeader('다가오는 일정') + (events.length ? events.map(e => `<p class="agenda-label">${prettyDate(e.date)}</p>${eventRow(e)}`).join('') : empty('다가오는 일정이 없어요.','calendar')); openDialog('editor');
   },
-  settings() { $('#editor').innerHTML = editorHeader('나만의 워크스페이스') + `<p class="info-copy">ONDO Office · ${isLocal ? 'PC 버전<br><br>업무 데이터는 이 프로젝트의 .local/office.json에 저장돼요. 직전 저장본도 .local/office.json.previous에 남겨요. AI 요청은 이 PC의 Codex를 통해 OpenAI로 전달되며 기존 Codex 요금제 사용량을 사용해요. API 키로 자동 전환하지 않아요.' : '웹 버전<br><br>데이터는 현재 브라우저에 저장돼요. Codex 요금제 연결은 PC 버전에서 사용할 수 있어요.'}<br><br>처음 표시된 업무와 일정은 예시예요. 기존 Vercel 웹 버전의 데이터는 JSON 백업을 내려받아 여기에서 가져올 수 있어요. 가져오면 현재 데이터가 교체돼요.</p><div class="dialog-footer"><button class="button" data-action="import">백업 가져오기</button><button class="button" data-action="export">JSON 백업</button><button class="button primary" data-close="editor">확인</button></div>`; openDialog('editor'); },
+  settings() { $('#editor').innerHTML = editorHeader('나만의 워크스페이스') + '<p class="info-copy">ONDO Office · 웹 버전<br><br>문서, 일정, 할 일은 현재 브라우저에 저장돼요. 다른 기기나 브라우저와 자동으로 동기화되지 않아요. 중요한 기록은 JSON 백업으로 보관해 주세요.<br><br>기존 PC 버전 데이터도 백업 가져오기로 옮길 수 있어요. 가져오면 현재 브라우저의 데이터가 교체돼요.<br><br>처음 표시된 업무와 일정은 사용법을 위한 예시예요.</p><div class="dialog-footer"><button class="button" data-action="import">백업 가져오기</button><button class="button" data-action="export">JSON 백업</button><button class="button primary" data-close="editor">확인</button></div>'; openDialog('editor'); },
   import() { $('#backup-file').click(); },
   export() { const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`ondo-backup-${dateKey()}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); toast('백업 파일을 다운로드했어요.'); },
-  async 'delete-item'() {
+  'delete-item'() {
     const form = $('#item-form');
     if (!form || !confirm('이 항목을 삭제할까요? 삭제 전에 데이터 백업으로 보관할 수 있어요.')) return;
     const collection = {task:'tasks',event:'events',doc:'docs'}[form.dataset.type];
-    data[collection] = data[collection].filter(x=>x.id !== form.dataset.id); save(); $('#editor').close(); render(); await persistenceQueue; toast(persistenceError || storageIssue ? 'PC에 반영하지 못했어요. 백업을 보관해 주세요.' : '삭제했어요.');
+    data[collection] = data[collection].filter(x=>x.id !== form.dataset.id); save(); $('#editor').close(); render(); toast('삭제했어요.');
   }
 };
 document.addEventListener('click', event => {
-  const el = event.target.closest('[data-action],[data-new],[data-edit],[data-close],[data-filter],[data-month],[data-day],[data-prompt]'); if (!el) return;
-  if (el.dataset.close) document.getElementById(el.dataset.close).close();
+  const el = event.target.closest('[data-action],[data-new],[data-edit],[data-close],[data-filter],[data-month],[data-day]'); if (!el) return;
+  if (el.dataset.go) { document.getElementById('editor').close(); location.hash=el.dataset.go; }
+  else if (el.dataset.close) document.getElementById(el.dataset.close).close();
   else if (el.dataset.action) actions[el.dataset.action]?.();
   else if (el.dataset.new) edit(el.dataset.new);
   else if (el.dataset.edit) edit(el.dataset.edit,el.dataset.id);
   else if (el.dataset.filter) { taskFilter=el.dataset.filter; render(); }
   else if (el.dataset.month) { calendarMonth.setMonth(calendarMonth.getMonth()+Number(el.dataset.month)); render(); }
   else if (el.dataset.day) edit('event',null,el.dataset.day);
-  else if (el.dataset.prompt) { $('#chat-input').value=el.dataset.prompt; $('#chat-form').requestSubmit(); }
 });
 document.addEventListener('change', event => {
   if (event.target.dataset.toggle) { const task=data.tasks.find(t=>t.id === event.target.dataset.toggle); if (task) { task.done=event.target.checked; save(); render(); } }
@@ -189,57 +168,16 @@ document.addEventListener('keydown', event => {
 });
 $('#global-search').addEventListener('input', event=> { search=event.target.value.trim(); render(); });
 window.addEventListener('hashchange',()=> { search=''; $('#global-search').value=''; render(); main.focus({preventScroll:true}); });
-function chatMessage(text, type) { const el=document.createElement('div'); el.className=`chat-message ${type}-message`; el.textContent=text; $('#chat-log').append(el); el.scrollIntoView({block:'nearest'}); return el; }
-$('#chat-form').addEventListener('submit',async event=> {
-  event.preventDefault(); if (aiBusy) return;
-  const input=$('#chat-input'), prompt=input.value.trim(); if (!prompt) return;
-  chatMessage(prompt,'user'); input.value='';
-  if (!aiReady) { chatMessage(isLocal ? 'Codex 앱에서 ChatGPT로 로그인한 후 연결 확인을 눌러 주세요. API 키는 사용하지 않아요.' : 'Codex 요금제 연결은 PC 버전에서 사용할 수 있어요. AI오피스 실행.cmd를 열어 주세요.','error'); return; }
-  aiBusy=true; $('#chat-form button').disabled=true;
-  const pending=chatMessage('업무를 살펴보고 있어요…','assistant'); pending.classList.add('loading-dot');
-  try {
-    const response=await fetch('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json','X-ONDO-Token':localToken},body:JSON.stringify({prompt,history:chatHistory.slice(-6),context:{date:dateKey(),tasks:data.tasks.slice(0,50),events:data.events.slice(0,30),documents:data.docs.slice(0,30).map(d=>({title:d.title,category:d.category}))}}),signal:AbortSignal.timeout(150000)});
-    const result=await response.json(); if (!response.ok) throw Error(result.error || 'AI 응답을 받아오지 못했어요.');
-    pending.textContent=result.text;
-    chatHistory.push({role:'user',content:prompt},{role:'assistant',content:result.text});
-    if(chatHistory.length>6) chatHistory.splice(0,chatHistory.length-6);
-    $('#ai-status').textContent='ChatGPT 로그인 · Codex 요금제 사용량 적용 · 별도 API 키 없음';
-  } catch(error) { pending.textContent=error.name === 'TimeoutError' ? '응답이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.' : error.message; pending.classList.add('error-message'); }
-  finally { pending.classList.remove('loading-dot'); aiBusy=false; $('#chat-form button').disabled=false; }
-});
-async function checkAI() {
-  $('#ai-status').textContent='Codex 로그인 상태를 확인하고 있어요…';
-  try { const result=await fetch('/api/assistant').then(r=>r.json()); aiReady=result.configured === true; $('#ai-status').textContent=result.reason || 'PC 버전에서 Codex 요금제를 연결할 수 있어요.'; $('#connection-badge').textContent=aiReady ? 'Codex 연결됨' : 'AI 연결 확인 필요'; }
-  catch { aiReady=false; $('#ai-status').textContent='로컬 서버 연결을 확인해 주세요.'; }
-}
-$('#recheck-ai').addEventListener('click',checkAI);
 $('#backup-file').addEventListener('change',async event=> {
   const file=event.target.files[0]; event.target.value=''; if(!file) return;
   try {
     if(file.size>10_000_000) throw Error('백업 파일이 너무 큽니다.');
     const imported=JSON.parse(await file.text());
-    const {validWorkspace}=await import('./workspace-validation.js');
     if(!validWorkspace(imported)) throw Error('올바른 ONDO 백업 파일이 아닙니다.');
     if(!confirm('백업 파일의 내용으로 현재 업무 데이터를 교체할까요? 현재 데이터는 먼저 백업해 주세요.')) return;
-    data=imported; storageIssue=''; save(); render(); await persistenceQueue;
-    toast(persistenceError ? '가져왔지만 PC 저장에 실패했어요. 백업을 보관해 주세요.' : '백업 데이터를 가져왔어요.');
+    data=imported; storageIssue=''; save(); render();
+    toast(storageIssue ? '저장에 실패했어요. 백업 파일을 보관해 주세요.' : '백업 데이터를 가져왔어요.');
   } catch(error) { toast(error.message); }
 });
-async function initializeLocal() {
-  try {
-    const response=await fetch('/api/session');
-    if(!response.ok) return;
-    const session=await response.json(); if(session.app !== 'ondo-local-office-v1') return;
-    isLocal=true; localToken=session.token; storageIssue='';
-    const stored=await fetch('/api/workspace').then(async r=>{if(!r.ok) throw Error('PC 데이터를 읽지 못했어요. .local 폴더의 백업을 확인해 주세요.');return r.json();});
-    if(stored.data) { data=stored.data; firstVisit=false; }
-    else firstVisit=true;
-    persistenceLabel('이 PC에 저장됨');
-    document.title='ONDO PC — 나의 Codex 오피스';
-    $('#profile-subtitle').textContent='내 PC · Codex 요금제';
-  } catch(error) { if(isLocal) { storageIssue=error.message; persistenceLabel('PC 데이터 확인 필요'); } }
-}
-await initializeLocal();
-checkAI();
 render();
 if (firstVisit && !storageIssue) { save(); toast('예시 데이터로 시작했어요. 내 업무로 자유롭게 바꿔 보세요.'); }

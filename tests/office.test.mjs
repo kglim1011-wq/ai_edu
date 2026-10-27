@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createInitialData, shiftDate, taskMatches, summarize } from '../public/domain.js';
-import assistant from '../api/assistant.mjs';
+import { validWorkspace } from '../public/workspace-validation.js';
 test('date calculations cross year and leap-day boundaries correctly', () => {
   assert.equal(shiftDate('2026-12-31',1),'2027-01-01');
   assert.equal(shiftDate('2028-02-28',1),'2028-02-29');
@@ -21,12 +21,9 @@ test('briefing reflects task completion and only the selected day’s events', (
   assert.equal(summarize(data,'2026-10-27').events.length,3);
   assert.equal(summarize(data,'2026-10-28').events.length,0);
 });
-test('hosted version cannot access local Codex authentication', async () => {
-  const res={setHeader(){},status(code){this.code=code;return this;},json(value){this.body=value;}};
-  await assistant({method:'GET'},res);
-  assert.equal(res.body.configured,false);
-  assert.equal(res.body.mode,'web');
-  await assistant({method:'POST'},res);
-  assert.equal(res.code,503);
-  assert.equal(typeof res.body.error,'string');
+test('backup import accepts valid data and rejects invalid dates and duplicate IDs', () => {
+  const data=createInitialData('2026-10-27');
+  assert.equal(validWorkspace(data),true);
+  data.tasks[0].date='2026-02-31'; assert.equal(validWorkspace(data),false);
+  data.tasks[0].date='2026-10-27'; data.tasks.push({...data.tasks[0]}); assert.equal(validWorkspace(data),false);
 });
