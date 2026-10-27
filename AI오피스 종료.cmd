@@ -1,5 +1,5 @@
 @echo off
-chcp 65001 >nul
+setlocal
 cd /d "%~dp0"
 where node >nul 2>nul
 if not errorlevel 1 (
@@ -7,6 +7,6 @@ if not errorlevel 1 (
 ) else if exist "C:\Program Files\nodejs\node.exe" (
   "C:\Program Files\nodejs\node.exe" scripts\stop.mjs
 ) else (
-  echo Node.js를 찾을 수 없습니다.
+  echo Node.js was not found.
 )
 pause
