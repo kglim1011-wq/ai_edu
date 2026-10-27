@@ -1,0 +1,25 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+
+# Dependencies and build outputs
+node_modules/
+.next/
+.nuxt/
+dist/
+build/
+coverage/
+.vercel/
+
+# Local caches and logs
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
+Thumbs.db
