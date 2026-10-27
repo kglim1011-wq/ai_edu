@@ -6,3 +6,5 @@
 - Run checks appropriate to the change, review the diff, commit the completed work, and push to the tracking branch. Verify synchronization and report the commit and any blockers.
 - Never commit credentials, tokens, local environment files, build outputs, or dependency folders.
 - The user wants Vercel deployment connected to this GitHub repository. Verify the Vercel project and Git integration before reporting deployment as configured; verify deployment status before reporting it as live.
+- The primary product is now the PC-local ONDO office. AI must use the user's existing ChatGPT-authenticated Codex subscription through the official local CLI. Never add API-key, Gemini, AI Gateway, or paid API fallback unless explicitly requested. Keep local Codex authentication inaccessible to the hosted Vercel preview.
+- Keep private workspace data under ignored `.local/`; never commit or deploy it. Preserve backups and existing user data when changing persistence.

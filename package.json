@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "node scripts/launch.mjs",
+    "stop": "node scripts/stop.mjs",
     "dev": "node scripts/dev.mjs",
     "test": "node --test",
     "build": "node scripts/build.mjs"

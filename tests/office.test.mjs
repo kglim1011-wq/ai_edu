@@ -21,10 +21,11 @@ test('briefing reflects task completion and only the selected day’s events', (
   assert.equal(summarize(data,'2026-10-27').events.length,3);
   assert.equal(summarize(data,'2026-10-28').events.length,0);
 });
-test('AI is explicitly unavailable until external data transmission is authorized', async () => {
+test('hosted version cannot access local Codex authentication', async () => {
   const res={setHeader(){},status(code){this.code=code;return this;},json(value){this.body=value;}};
   await assistant({method:'GET'},res);
-  assert.deepEqual(res.body,{configured:false});
+  assert.equal(res.body.configured,false);
+  assert.equal(res.body.mode,'web');
   await assistant({method:'POST'},res);
   assert.equal(res.code,503);
   assert.equal(typeof res.body.error,'string');
