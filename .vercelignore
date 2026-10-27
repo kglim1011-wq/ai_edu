@@ -1,0 +1,6 @@
+.git
+.env*
+tests
+scripts/dev.mjs
+AGENTS.md
+README.md
